@@ -12,6 +12,11 @@ programas:
   - `arm-none-eabi-objcopy`
 - [Instalar Rust](https://www.rust-lang.org/tools/install)
 - Agregar el target de ARM a Rust: `rustup target add armv7a-none-eabi`
+- Instalar `cargo-binutils`: 
+```
+cargo install cargo-binutils
+rustup component add llvm-tools-preview
+```
 
 ## Compilación
 
@@ -32,17 +37,27 @@ cargo run
 
 ## Flashear
 
-Para crear la imagen que se flashea en la tarjeta SD de la raspberry pi se requiere primero compilar, se recomiendo en release mode:
-
-TODO: Ignorar esto de release, solo ejecutar el comando de abajo que agarra el
-target de debug, no sé por qué cargo build --release parece generar una imagen
-directamente en vez de un ELF?
-```
-cargo build --release
-```
-
-Luego ejecutar:
+Así se genera el archivo binario:
 
 ```
-arm-none-eabi-objcopy -O binary target/armv7a-none-eabi/release/baremetal_raspi ./kernel.img
+cargo objcopy -- -O binary boot/kernel7.img
+```
+
+Alternativamente existe el siguiente alias para el comando de arriba:
+```
+cargo flash
+```
+
+## binutils
+
+Ejemplos de comandos para inspeccionar binario:
+
+## Object dump
+```
+cargo objdump -- --disassemble --no-show-raw-insn
+```
+
+## Inspeccionar tamaño de secciones
+```
+cargo size -- -A
 ```
