@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "baremetal_raspi"
+name = "common-types"
 version = "0.1.0"
