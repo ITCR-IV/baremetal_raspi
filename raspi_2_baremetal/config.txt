@@ -1,0 +1,10 @@
+# Configuración para Raspberry Pi 2 Model B con U-Boot
+
+# Establecer el bootloader en U-Boot
+kernel=bootcode.bin
+
+# Configuraciones de video (ajustar según sea necesario)
+hdmi_force_hotplug=1
+hdmi_drive=2
+
+# Otras configuraciones específicas para tu hardware o requisitos pueden ser agregadas aquí
