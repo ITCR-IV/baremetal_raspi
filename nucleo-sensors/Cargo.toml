@@ -8,12 +8,13 @@ version = "0.1.0"
 # - dependencies --------------------------------------------------------------
 
 [dependencies]
-cortex-m = "0.7.6"
+cortex-m = { version = "0.7.6", features = ["critical-section-single-core"]}
 cortex-m-rt = "0.7.1"
-defmt = "0.2.0"
-defmt-rtt = "0.2.0"
-panic-probe = { version = "0.2.0", features = ["print-defmt"] }
+defmt = "0.3.0"
+defmt-rtt = "0.4.0"
+panic-probe = { version = "0.3.0", features = ["print-defmt"] }
 nucleo-h7xx = "0.2.1"
+ism330dhcx = "0.5.1"
 
 
 # - features ------------------------------------------------------------------
