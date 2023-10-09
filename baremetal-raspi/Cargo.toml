@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 bcm2837-lpa = "0.1.0"
 embedded-hal = "0.2.7"
+nb = "1.1.0"

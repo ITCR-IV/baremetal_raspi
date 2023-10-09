@@ -3,6 +3,9 @@
 
 use core::panic::PanicInfo;
 
+mod serial;
+mod clocks;
+
 mod boot {
 
     use core::arch::global_asm;
@@ -27,4 +30,4 @@ fn panic(_info: &PanicInfo) -> ! {
 }
 
 // TODO: 
-// Implementar traits embedded_hal::seral::{Read, Write}
+// Implementar traits embedded_hal::serial::{Read, Write}
