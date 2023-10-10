@@ -1,7 +1,7 @@
 use embedded_hal as hal;
 use nb;
 
-use bcm2837_lpa::UART0;
+use crate::pac::UART0;
 
 /// A serial interface
 // NOTE generic over the UART peripheral

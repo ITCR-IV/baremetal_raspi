@@ -1,1 +1,1 @@
-const UART_CLOCK: usize = 43e6;
+const UART_CLOCK: usize = 43_000_000;

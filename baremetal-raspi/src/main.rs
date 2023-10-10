@@ -3,8 +3,11 @@
 
 use core::panic::PanicInfo;
 
-mod serial;
-mod clocks;
+pub mod clocks;
+pub mod gpio;
+pub mod serial;
+
+pub use bcm2837_lpa as pac;
 
 mod boot {
 
@@ -16,18 +19,11 @@ mod boot {
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    loop {
-
-
-    }
+    loop {}
 }
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-
     // Podríamos hacer que blinkee un LED para que sepamos si crashea ?
     loop {}
 }
-
-// TODO: 
-// Implementar traits embedded_hal::serial::{Read, Write}
