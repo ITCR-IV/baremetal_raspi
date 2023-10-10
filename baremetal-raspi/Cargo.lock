@@ -7,6 +7,7 @@ name = "baremetal_raspi"
 version = "0.1.0"
 dependencies = [
  "bcm2837-lpa",
+ "common-types",
  "embedded-hal",
  "nb 1.1.0",
  "seq-macro",
@@ -21,6 +22,10 @@ dependencies = [
  "portable-atomic 0.3.20",
  "vcell",
 ]
+
+[[package]]
+name = "common-types"
+version = "0.1.0"
 
 [[package]]
 name = "embedded-hal"

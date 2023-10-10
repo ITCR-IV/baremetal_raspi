@@ -1,7 +1,11 @@
 use embedded_hal as hal;
-use nb;
+use hal::serial::{Read, Write};
+use nb::{self, block};
 
-use crate::pac::UART0;
+use crate::{
+    gpio::{AF0, AF2, AF3, P14, P15, P32, P33, P36, P37},
+    pac::UART0,
+};
 
 /// A serial interface
 // NOTE generic over the UART peripheral
@@ -14,6 +18,7 @@ pub struct Serial<UART, PINS> {
 pub type Serial0<PINS> = Serial<UART0, PINS>;
 
 /// Serial interface error
+#[derive(Debug)]
 pub enum Error {
     /// Framing error
     Framing,
@@ -23,8 +28,17 @@ pub enum Error {
     Parity,
 }
 
-trait TxPin<UART> {}
-trait RxPin<UART> {}
+pub trait TxPin<UART> {}
+pub trait RxPin<UART> {}
+
+impl TxPin<UART0> for P14<AF0> {}
+impl RxPin<UART0> for P15<AF0> {}
+
+impl TxPin<UART0> for P32<AF3> {}
+impl RxPin<UART0> for P33<AF3> {}
+
+impl TxPin<UART0> for P36<AF2> {}
+impl RxPin<UART0> for P37<AF2> {}
 
 impl<TX: TxPin<UART0>, RX: RxPin<UART0>> Serial<UART0, (TX, RX)> {
     /// Creates a UART peripheral abstraction to provide serial communication
@@ -38,9 +52,27 @@ impl<TX: TxPin<UART0>, RX: RxPin<UART0>> Serial<UART0, (TX, RX)> {
     pub fn free(self) -> (UART0, (TX, RX)) {
         (self.uart, self.pins)
     }
+
+    /// Write a whole slice of bytes, blocking until they're all written
+    pub fn write_bytes(&mut self, buffer: &[u8]) -> Result<(), Error> {
+        for &byte in buffer {
+            block!(self.write(byte))?;
+        }
+
+        Ok(())
+    }
+
+    /// Read `n` bytes into buffer, blocking until they're all written
+    pub fn read_bytes(&mut self, n: usize, buffer: &mut [u8]) -> Result<(), Error> {
+        for i in 0..n {
+            buffer[i] = block!(self.read())?;
+        }
+
+        Ok(())
+    }
 }
 
-impl<PINS> hal::serial::Read<u8> for Serial<UART0, PINS> {
+impl<PINS> Read<u8> for Serial<UART0, PINS> {
     type Error = Error;
 
     fn read(&mut self) -> nb::Result<u8, Error> {
@@ -69,7 +101,7 @@ impl<PINS> hal::serial::Read<u8> for Serial<UART0, PINS> {
     }
 }
 
-impl<PINS> hal::serial::Write<u8> for Serial<UART0, PINS> {
+impl<PINS> Write<u8> for Serial<UART0, PINS> {
     type Error = Error;
 
     fn write(&mut self, byte: u8) -> nb::Result<(), Error> {
