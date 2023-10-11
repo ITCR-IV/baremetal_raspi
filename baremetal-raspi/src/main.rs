@@ -1,45 +1,40 @@
-#![no_std] // No linkear standard lib
-#![no_main] // Deshabilitar Rust-level entry points
+#![no_std]
+#![no_main]
 
+use core::arch::asm;
 use core::panic::PanicInfo;
 
-use common_types::Temperature;
-
-pub mod clocks;
-pub mod gpio;
-pub mod serial;
-
-pub use bcm2837_lpa as pac;
-use gpio::GpioExt;
-use serial::Serial;
-
-mod boot {
-
+mod start {
     use core::arch::global_asm;
-
-    // Header de sección en ensamblador
     global_asm!(".section .text._start");
 }
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    // NOTE(unsafe) Solo llamar steal() una vez!!
-    let dp = unsafe { pac::Peripherals::steal() };
-    let pins = dp.GPIO.split();
+    let gpio_fsel2 = 1 << 3;
 
-    let tx = pins.p14.into_alternate_fn0();
-    let rx = pins.p15.into_alternate_fn0();
+    unsafe {
+        core::ptr::write_volatile(0x3F200008 as *mut u32, gpio_fsel2);
+    }
 
-    let buffer = Temperature(50.1).to_bytes();
+    loop {
+        unsafe {
+            core::ptr::write_volatile(0x3F20001c as *mut u32, 1 << 21);
 
-    let mut uart = Serial::uart0(dp.UART0, (tx, rx));
-    uart.write_bytes(&buffer).unwrap();
+            for _ in 1..50000 {
+                asm!("nop")
+            }
 
-    loop {}
+            core::ptr::write_volatile(0x3F200028 as *mut u32, 1 << 21);
+
+            for _ in 1..50000 {
+                asm!("nop")
+            }
+        }
+    }
 }
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    // Podríamos hacer que blinkee un LED para que sepamos si crashea ?
     loop {}
 }

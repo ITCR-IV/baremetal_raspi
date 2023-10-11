@@ -1,3 +1,4 @@
+kernel=kernel7.img
 arm_64bit=0
 init_uart_baud=115200
 init_uart_clock=48000000
