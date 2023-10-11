@@ -1,16 +1,16 @@
 #![no_main]
 #![no_std]
+#![feature(exclusive_range_pattern)]
 
+use adafruit_7segment::{Index, SevenSegment};
+use ht16k33::{Dimming, Display, HT16K33};
 use ism330dhcx::ctrl1xl::Odr_Xl;
 use ism330dhcx::Ism330Dhcx;
 use nucleo::hal::delay::Delay;
 use nucleo::hal::prelude::*;
-use nucleo::hal::serial::config::Config;
-use nucleo::led::Led;
 use nucleo_h7xx as nucleo;
 
-use core::fmt::Write;
-use nb::block;
+const DISP_I2C_ADDR: u8 = 0x70;
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
@@ -36,57 +36,74 @@ fn main() -> ! {
         dp.GPIOG.split(ccdr.peripheral.GPIOG),
     );
 
-    // // Configure the SCL and the SDA pin for our I2C bus
-    // let scl = pins.d15.into_alternate_open_drain::<4>();
-    // let sda = pins.d14.into_alternate_open_drain::<4>();
+    // Configure the SCL and the SDA pin for sensor I2C bus
+    let scl = pins.d15.into_alternate_open_drain::<4>();
+    let sda = pins.d14.into_alternate_open_drain::<4>();
 
-    // let mut i2c = dp
-    //     .I2C1
-    //     .i2c((scl, sda), 100.kHz(), ccdr.peripheral.I2C1, &ccdr.clocks);
+    let mut i2c1 = dp
+        .I2C1
+        .i2c((scl, sda), 100.kHz(), ccdr.peripheral.I2C1, &ccdr.clocks);
 
-    // let mut sensor = Ism330Dhcx::new(&mut i2c).unwrap();
+    let mut sensor = Ism330Dhcx::new(&mut i2c1).unwrap();
 
-    let tx = pins.d45.into_alternate();
-    let rx = pins.d46.into_alternate();
+    sensor
+        .ctrl1xl
+        .set_accelerometer_data_rate(&mut i2c1, Odr_Xl::Hz52)
+        .expect("Don't know why setting data rate could fail");
 
-    let cfg = Config::new(9600.bps());
+    // Configure the SCL and the SDA pin for display I2C bus
+    let scl = pins.d69.into_alternate_open_drain();
+    let sda = pins.d68.into_alternate_open_drain();
 
-    // Configure the serial peripheral.
-    let serial = dp
-        .USART3
-        .serial((tx, rx), cfg, ccdr.peripheral.USART3, &ccdr.clocks)
-        .unwrap();
+    let i2c4 = dp
+        .I2C4
+        .i2c((scl, sda), 100.kHz(), ccdr.peripheral.I2C4, &ccdr.clocks);
 
-    let (mut tx, mut rx) = serial.split();
+    let mut ht16k33 = HT16K33::new(i2c4, DISP_I2C_ADDR);
+    ht16k33.initialize().expect("Failed to initialize ht16k33");
+    ht16k33
+        .set_display(Display::ON)
+        .expect("Could not turn on the display!");
+    ht16k33
+        .set_dimming(Dimming::BRIGHTNESS_MAX)
+        .expect("Could not set dimming!");
 
-    //writeln!(tx, "Hello, world!\r\n").unwrap();
-
-    let bytes: &[u8] = "habcd".as_bytes();
-
-    for byte in bytes {
-        block!(tx.write(*byte)).unwrap();
-        delay.delay_ms(1000u32);
-        defmt::debug!("sent {}", *byte as char);
-
-        // let received = match block!(rx.read()) {
-        //     Ok(byte) => byte,
-        //     Err(_) => 244,
-        // };
-        // defmt::debug!("echo! {}", received as char);
-        // delay.delay_ms(1000u32);
-    }
     loop {
-        // Echo what is received on the serial link.
-        // sensor
-        //     .ctrl1xl
-        //     .set_accelerometer_data_rate(&mut i2c, Odr_Xl::Hz52)
-        //     .expect("Don't know why setting data rate could fail");
+        let temp = sensor.get_temperature(&mut i2c1).unwrap();
+        // Formatting a float using the whole display
 
-        // let temp = sensor.get_temperature(&mut i2c).unwrap();
+        if temp < -9.99 {
+            ht16k33
+                .update_buffer_with_float(Index::One, -9.99, 2, 10)
+                .unwrap()
+        } else if temp < 0.0 {
+            ht16k33
+                .update_buffer_with_float(Index::One, temp, 2, 10)
+                .unwrap()
+        } else if temp < 10.0 {
+            ht16k33
+                .update_buffer_with_float(Index::Two, temp, 2, 10)
+                .unwrap();
+            ht16k33.update_buffer_with_digit(Index::One, 0)
+        } else if temp < 100.0 {
+            ht16k33
+                .update_buffer_with_float(Index::One, temp, 2, 10)
+                .unwrap()
+        } else {
+            ht16k33
+                .update_buffer_with_float(Index::One, 99.99, 2, 10)
+                .unwrap()
+        }
 
-        // defmt::info!("Temperature: {}", temp);
+        'retries: for _ in 0..5 {
+            match ht16k33.write_display_buffer() {
+                Ok(_) => break 'retries,
+                Err(e) => defmt::debug!("{:?}", e),
+            }
+            defmt::debug!("Retrying write_display_buffer");
+        }
 
-        // delay.delay_ms(1000u32);
+        delay.delay_ms(100u32);
     }
 
     nucleo_sensors::exit()
