@@ -32,13 +32,10 @@ pub extern "C" fn _start() -> ! {
     let tx = pins.p14.into_alternate_fn0();
     let rx = pins.p15.into_alternate_fn0();
 
-    //let buffer = Temperature(50.1).to_bytes();
-    let buffer: [u8; 6] = [b'a', b' ', b'x', b'd', b'\r', b'\n'];
-
     let mut uart = Serial::uart0(dp.UART0, (tx, rx));
 
     loop {
-        for _ in 1..10_000_000 {
+        for _ in 1..3_000_000 {
             unsafe { asm!("nop") }
         }
 
@@ -47,12 +44,10 @@ pub extern "C" fn _start() -> ! {
             Err(_) => p20o.set_high(),
         }
         p21o.set_high();
-        uart.write_bytes(&buffer).unwrap();
-        for _ in 1..10_000_000 {
+        for _ in 1..3_000_000 {
             unsafe { asm!("nop") }
         }
         p21o.set_low();
-        // uart.write_bytes(&buffer).unwrap();
     }
 }
 

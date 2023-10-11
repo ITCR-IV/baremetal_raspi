@@ -44,8 +44,92 @@ impl<TX: TxPin<UART0>, RX: RxPin<UART0>> Serial<UART0, (TX, RX)> {
     /// Creates a UART peripheral abstraction to provide serial communication
     /// Baudrate is specified in config.txt of boot partition
     pub fn uart0(uart: UART0, pins: (TX, RX)) -> Self {
-        // UART should already be enabled from boot so no init code is required
-        Serial { uart, pins }
+        let mut serial = Serial { uart, pins };
+
+        // Disable UART0.
+        serial.uart.cr.write(|w| unsafe { w.bits(0) });
+
+        // Clear pending interrupts.
+        serial.uart.icr.write(|w| {
+            w.oeic()
+                .set_bit()
+                .beic()
+                .set_bit()
+                .peic()
+                .set_bit()
+                .feic()
+                .set_bit()
+                .rtic()
+                .set_bit()
+                .rtic()
+                .set_bit()
+                .txic()
+                .set_bit()
+                .rxic()
+                .set_bit()
+        });
+
+        block!(serial.flush()).unwrap();
+
+        // Set integer & fractional part of baud rate.
+        // Divider = UART_CLOCK/(16 * Baud)
+        // Fraction part register = (Fractional part * 64) + 0.5
+        // UART_CLOCK = 48_000_000; Baud = 115200.
+        // UART_CLOCK = 48_000_000; Baud = 9600.
+
+        // Divider = 48_000_000 / (16 * 115200) = 26.041666... = 26.
+        // Divider = 48000000 / (16 * 9600) = 312.5
+        serial.uart.ibrd.write(|w| w.bauddivint().variant(312));
+
+        // Fractional part register = (.5 * 64) = 32
+        serial.uart.fbrd.write(|w| w.bauddivfrac().variant(32));
+
+        // Generated baud rate = 48e6/(16* (26+43/64)) ~ 115176.9646
+
+        // Enable FIFO & 8 bit data transmissio (1 stop bit, no parity).
+        serial.uart.lcr_h.write(|w| {
+            w.wlen()
+                .variant(0b11)
+                .fen()
+                .set_bit()
+                .stp2()
+                .clear_bit()
+                .pen()
+                .clear_bit()
+                .brk()
+                .clear_bit()
+        });
+
+        // Mask all interrupts.
+        serial.uart.imsc.write(|w| {
+            w.ctsmim()
+                .set_bit()
+                .rxim()
+                .set_bit()
+                .txim()
+                .set_bit()
+                .rtim()
+                .set_bit()
+                .feim()
+                .set_bit()
+                .peim()
+                .set_bit()
+                .beim()
+                .set_bit()
+                .oeim()
+                .set_bit()
+        });
+
+        // Disable DMA
+        serial.uart.dmacr.write(|w| unsafe { w.bits(0) });
+
+        // Enable UART0, receive & transfer part of UART.
+        serial
+            .uart
+            .cr
+            .write(|w| w.uarten().set_bit().txe().set_bit().rxe().set_bit());
+
+        serial
     }
 
     /// Releases the UART peripheral and associated pins
@@ -105,6 +189,8 @@ impl<PINS> Write<u8> for Serial<UART0, PINS> {
     type Error = Error;
 
     fn write(&mut self, byte: u8) -> nb::Result<(), Error> {
+        block!(self.flush()).unwrap();
+
         // read the flags register
         let fr = self.uart.fr.read();
 
