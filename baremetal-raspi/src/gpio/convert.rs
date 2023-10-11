@@ -41,19 +41,19 @@ impl<const N: u8, MODE: PinMode> Pin<N, MODE> {
                     .write_with_zero(|w| w.bits(M::BITS << N * 3)),
                 10..=19 => (*gpio)
                     .gpfsel1
-                    .write_with_zero(|w| w.bits(M::BITS << N * 3)),
+                    .write_with_zero(|w| w.bits(M::BITS << (N-10) * 3)),
                 20..=29 => (*gpio)
                     .gpfsel2
-                    .write_with_zero(|w| w.bits(M::BITS << N * 3)),
+                    .write_with_zero(|w| w.bits(M::BITS << (N-20) * 3)),
                 30..=39 => (*gpio)
                     .gpfsel3
-                    .write_with_zero(|w| w.bits(M::BITS << N * 3)),
+                    .write_with_zero(|w| w.bits(M::BITS << (N-30) * 3)),
                 40..=49 => (*gpio)
                     .gpfsel4
-                    .write_with_zero(|w| w.bits(M::BITS << N * 3)),
+                    .write_with_zero(|w| w.bits(M::BITS << (N-40) * 3)),
                 50..=53 => (*gpio)
                     .gpfsel5
-                    .write_with_zero(|w| w.bits(M::BITS << N * 3)),
+                    .write_with_zero(|w| w.bits(M::BITS << (N-50) * 3)),
                 _ => panic!("Tried to set inexistent pin's mode"),
             }
         }
